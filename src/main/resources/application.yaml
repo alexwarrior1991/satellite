@@ -67,6 +67,11 @@ app:
         critical: 10.0
       signal:
         min: -120.0
+      suppression:
+        time-minutes: 30
+        count: 5
+      sensor-deactivation:
+        enabled: true
     # Processing configuration
     processing:
       batch-size: 100

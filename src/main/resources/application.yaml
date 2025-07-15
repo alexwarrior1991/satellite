@@ -1,0 +1,73 @@
+
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: satellite-telemetry-system
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/satellite_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 10
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      client-type: lettuce
+
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000
+      cache-null-values: false
+
+  # Virtual Threads Configuration
+  threads:
+    virtual:
+      enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.alejandro.satellite: DEBUG
+    org.springframework.web: INFO
+    org.hibernate: INFO
+
+# Application specific properties
+app:
+  telemetry:
+    # Alert thresholds
+    alerts:
+      temperature:
+        min: -50.0
+        max: 100.0
+      battery:
+        critical: 10.0
+      signal:
+        min: -120.0
+    # Processing configuration
+    processing:
+      batch-size: 100
+      max-concurrent-threads: 1000

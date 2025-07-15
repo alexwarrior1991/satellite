@@ -9,6 +9,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Data Transfer Object for TelemetryPacket.
@@ -19,32 +21,40 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TelemetryPacketDTO {
-    
+
     private Long id;
-    
+
     @NotBlank(message = "Device ID is required")
     private String deviceId;
-    
+
     @NotNull(message = "Timestamp is required")
     private Instant timestamp;
-    
+
     private Double temperature;
-    
+
     private Double batteryLevel;
-    
+
     private Double signalStrength;
-    
+
     private Double latitude;
-    
+
     private Double longitude;
-    
+
     private Double altitude;
-    
+
     private DeviceStatus status;
-    
+
     private String message;
-    
+
     private boolean processed;
-    
+
     private Instant processedAt;
+
+    // Sensor relationship
+    private Long sensorId;
+
+    private SensorDTO sensor;
+
+    // Alerts
+    private List<AlertDTO> alerts = new ArrayList<>();
 }

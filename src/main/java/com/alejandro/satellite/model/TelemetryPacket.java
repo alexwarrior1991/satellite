@@ -9,6 +9,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Entity representing a telemetry packet received from a satellite or IoT device.
@@ -63,4 +65,33 @@ public class TelemetryPacket {
 
     @Column(name = "processed_at")
     private Instant processedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sensor_id")
+    private Sensor sensor;
+
+    @OneToMany(mappedBy = "telemetryPacket", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Alert> alerts = new ArrayList<>();
+
+    /**
+     * Add an alert to this telemetry packet.
+     * 
+     * @param alert the alert to add
+     * @return the added alert
+     */
+    public Alert addAlert(Alert alert) {
+        alerts.add(alert);
+        alert.setTelemetryPacket(this);
+        return alert;
+    }
+
+    /**
+     * Remove an alert from this telemetry packet.
+     * 
+     * @param alert the alert to remove
+     */
+    public void removeAlert(Alert alert) {
+        alerts.remove(alert);
+        alert.setTelemetryPacket(null);
+    }
 }

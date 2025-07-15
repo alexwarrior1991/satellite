@@ -3,11 +3,14 @@ package com.alejandro.satellite.service;
 import com.alejandro.satellite.dto.TelemetryPacketDTO;
 import com.alejandro.satellite.mapper.TelemetryPacketMapper;
 import com.alejandro.satellite.model.TelemetryPacket;
+import com.alejandro.satellite.repository.SensorRepository;
 import com.alejandro.satellite.repository.TelemetryPacketRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 public class TelemetryService {
 
     private final TelemetryPacketRepository telemetryPacketRepository;
+    private final SensorRepository sensorRepository;
     private final TelemetryPacketMapper telemetryPacketMapper;
     private final ExecutorService virtualThreadExecutor;
     private final AlertService alertService;
@@ -45,7 +49,7 @@ public class TelemetryService {
      * @return the processed telemetry packet
      */
     @Transactional
-    @org.springframework.cache.annotation.CacheEvict(value = "telemetryPackets", key = "#result.id", condition = "#result != null")
+    @CacheEvict(value = "telemetryPackets", key = "#result.id", condition = "#result != null")
     public TelemetryPacketDTO processTelemetryPacket(@Valid TelemetryPacketDTO telemetryPacketDTO) {
         log.debug("Processing telemetry packet: {}", telemetryPacketDTO);
 
@@ -56,6 +60,13 @@ public class TelemetryService {
 
         // Convert DTO to entity
         TelemetryPacket telemetryPacket = telemetryPacketMapper.toEntity(telemetryPacketDTO);
+
+        // If no sensor is associated but a sensorId is provided, try to find the sensor
+        if (telemetryPacket.getSensor() == null && telemetryPacketDTO.getSensorId() != null) {
+            log.debug("Looking up sensor with ID: {}", telemetryPacketDTO.getSensorId());
+            // The mapper should handle this, but just in case
+            sensorRepository.findById(telemetryPacketDTO.getSensorId()).ifPresent(telemetryPacket::setSensor);
+        }
 
         // Save to database
         telemetryPacket = telemetryPacketRepository.save(telemetryPacket);
@@ -85,7 +96,18 @@ public class TelemetryService {
                     if (dto.getTimestamp() == null) {
                         dto.setTimestamp(Instant.now());
                     }
-                    return telemetryPacketMapper.toEntity(dto);
+
+                    // Convert DTO to entity
+                    TelemetryPacket packet = telemetryPacketMapper.toEntity(dto);
+
+                    // If no sensor is associated but a sensorId is provided, try to find the sensor
+                    if (packet.getSensor() == null && dto.getSensorId() != null) {
+                        log.debug("Looking up sensor with ID: {}", dto.getSensorId());
+                        // The mapper should handle this, but just in case
+                        sensorRepository.findById(dto.getSensorId()).ifPresent(packet::setSensor);
+                    }
+
+                    return packet;
                 })
                 .toList();
 
@@ -126,7 +148,7 @@ public class TelemetryService {
      * @return the telemetry packet, if found
      */
     @Transactional(readOnly = true)
-    @org.springframework.cache.annotation.Cacheable(value = "telemetryPackets", key = "#id")
+    @Cacheable(value = "telemetryPackets", key = "#id")
     public Optional<TelemetryPacketDTO> getTelemetryPacket(Long id) {
         return telemetryPacketRepository.findById(id)
                 .map(telemetryPacketMapper::toDto);

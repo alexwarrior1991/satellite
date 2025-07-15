@@ -42,30 +42,37 @@ The system is built using:
 - Docker and Docker Compose
 - Java 21 (for development)
 
-### Using Docker Compose
+### Using Docker Compose for Infrastructure Only
 
 1. Clone the repository
 2. Navigate to the project directory
-3. Run the application using Docker Compose:
+3. Start PostgreSQL and Redis using Docker Compose:
 
 ```bash
 docker-compose up -d
 ```
 
 This will start:
-- The application on port 8080
 - PostgreSQL database on port 5432
 - Redis on port 6379
 
-### Development Setup
-
-1. Clone the repository
-2. Make sure you have Java 21 installed
-3. Run PostgreSQL and Redis (or use Docker Compose with just these services)
-4. Run the application:
+4. Run the application locally:
 
 ```bash
 ./mvnw spring-boot:run
+```
+
+The application will connect to the dockerized PostgreSQL and Redis services automatically because it's configured to use localhost:5432 for PostgreSQL and localhost:6379 for Redis.
+
+### Full Dockerized Setup (Optional)
+
+If you want to run the entire application in Docker, including the Spring Boot application:
+
+1. Uncomment the `app` service in the `docker-compose.yml` file
+2. Run Docker Compose:
+
+```bash
+docker-compose up -d
 ```
 
 ## API Endpoints

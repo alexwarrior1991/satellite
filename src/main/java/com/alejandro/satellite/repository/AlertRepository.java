@@ -26,7 +26,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
      * @return a list of alerts
      */
     List<Alert> findByTelemetryPacketId(Long telemetryPacketId);
-    
+
     /**
      * Find all alerts of a specific type.
      * 
@@ -35,7 +35,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
      * @return a page of alerts
      */
     Page<Alert> findByType(AlertType type, Pageable pageable);
-    
+
     /**
      * Find all alerts with a specific severity.
      * 
@@ -44,14 +44,14 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
      * @return a page of alerts
      */
     Page<Alert> findBySeverity(AlertSeverity severity, Pageable pageable);
-    
+
     /**
      * Find all unresolved alerts.
      * 
      * @return a list of unresolved alerts
      */
     List<Alert> findByResolvedFalse();
-    
+
     /**
      * Find all alerts created within a time range.
      * 
@@ -61,17 +61,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
      * @return a page of alerts
      */
     Page<Alert> findByCreatedAtBetween(Instant startTime, Instant endTime, Pageable pageable);
-    
-    /**
-     * Find all alerts for a specific device.
-     * 
-     * @param deviceId the device ID
-     * @param pageable pagination information
-     * @return a page of alerts
-     */
-    @Query("SELECT a FROM Alert a JOIN a.telemetryPacket t WHERE t.deviceId = :deviceId")
-    Page<Alert> findByDeviceId(@Param("deviceId") String deviceId, Pageable pageable);
-    
+
+
     /**
      * Find all alerts for a specific sensor.
      * 

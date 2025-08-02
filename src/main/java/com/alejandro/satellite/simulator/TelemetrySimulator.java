@@ -1,7 +1,9 @@
 package com.alejandro.satellite.simulator;
 
+import com.alejandro.satellite.dto.SensorDTO;
 import com.alejandro.satellite.dto.TelemetryPacketDTO;
 import com.alejandro.satellite.model.DeviceStatus;
+import com.alejandro.satellite.service.SensorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +32,10 @@ public class TelemetrySimulator implements CommandLineRunner {
 
     private final Random random = new Random();
     private final RestTemplate restTemplate = new RestTemplate();
+    private final SensorService sensorService;
+
+    // List to store active sensors
+    private List<SensorDTO> activeSensors;
 
     @Value("${app.simulator.device-count:10}")
     private int deviceCount;
@@ -49,6 +55,14 @@ public class TelemetrySimulator implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("Starting telemetry simulator with {} devices, {} packets per device", deviceCount, packetCount);
+
+        // Load active sensors
+        activeSensors = sensorService.getActiveSensors();
+        if (activeSensors.isEmpty()) {
+            log.error("No active sensors found. Telemetry simulation cannot proceed.");
+            return;
+        }
+        log.info("Loaded {} active sensors for simulation", activeSensors.size());
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             // Create a task for each device
@@ -120,9 +134,16 @@ public class TelemetrySimulator implements CommandLineRunner {
             status = statuses[random.nextInt(statuses.length)];
         }
 
+        // Randomly select a sensor from the active sensors list
+        SensorDTO selectedSensor = activeSensors.get(random.nextInt(activeSensors.size()));
+        Long sensorId = selectedSensor.getId();
+
+        log.debug("Selected sensor {} (ID: {}) for device {}", 
+                selectedSensor.getName(), sensorId, deviceId);
+
         // Create the telemetry packet
         return TelemetryPacketDTO.builder()
-                .deviceId(deviceId)
+                .sensorId(sensorId)  // Set sensorId from the randomly selected sensor
                 .timestamp(Instant.now())
                 .temperature(temperature)
                 .batteryLevel(batteryLevel)
@@ -131,7 +152,7 @@ public class TelemetrySimulator implements CommandLineRunner {
                 .longitude(longitude)
                 .altitude(altitude)
                 .status(status)
-                .message("Simulated telemetry packet")
+                .message("Simulated telemetry packet from " + selectedSensor.getName())
                 .build();
     }
 

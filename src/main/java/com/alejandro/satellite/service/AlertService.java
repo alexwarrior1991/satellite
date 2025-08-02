@@ -149,8 +149,9 @@ public class AlertService {
      * Create a temperature alert.
      */
     private boolean createTemperatureAlert(TelemetryPacket telemetryPacket) {
-        String message = String.format("Temperature alert for device %s: %.2f (outside range [%.2f, %.2f])",
-                telemetryPacket.getDeviceId(), telemetryPacket.getTemperature(), minTemperature, maxTemperature);
+        String sensorIdStr = telemetryPacket.getSensor() != null ? telemetryPacket.getSensor().getId().toString() : "unknown";
+        String message = String.format("Temperature alert for sensor %s: %.2f (outside range [%.2f, %.2f])",
+                sensorIdStr, telemetryPacket.getTemperature(), minTemperature, maxTemperature);
         log.warn(message);
 
         Alert alert = Alert.builder()
@@ -202,8 +203,9 @@ public class AlertService {
      * Create a battery alert.
      */
     private boolean createBatteryAlert(TelemetryPacket telemetryPacket) {
-        String message = String.format("Battery alert for device %s: %.2f (below critical level %.2f)",
-                telemetryPacket.getDeviceId(), telemetryPacket.getBatteryLevel(), criticalBatteryLevel);
+        String sensorIdStr = telemetryPacket.getSensor() != null ? telemetryPacket.getSensor().getId().toString() : "unknown";
+        String message = String.format("Battery alert for sensor %s: %.2f (below critical level %.2f)",
+                sensorIdStr, telemetryPacket.getBatteryLevel(), criticalBatteryLevel);
         log.warn(message);
 
         // Update device status
@@ -346,13 +348,20 @@ public class AlertService {
     /**
      * Get all alerts for a specific device.
      *
-     * @param deviceId the device ID
+     * @param deviceId the device ID (sensor ID as string)
      * @param pageable pagination information
      * @return a page of alerts
      */
     @Transactional(readOnly = true)
     public Page<Alert> getAlertsForDevice(String deviceId, Pageable pageable) {
-        return alertRepository.findByDeviceId(deviceId, pageable);
+        try {
+            Long sensorId = Long.parseLong(deviceId);
+            return alertRepository.findBySensorId(sensorId, pageable);
+        } catch (NumberFormatException e) {
+            log.warn("Invalid device ID format: {}. Expected a numeric sensor ID.", deviceId);
+            // Return an empty page with the same pageable
+            return Page.empty(pageable);
+        }
     }
 
     /**
@@ -399,7 +408,7 @@ public class AlertService {
      * It is designed to be thread-safe in a multi-threaded environment.
      *
      * @param sensor the sensor (can be null if only deviceId is available)
-     * @param deviceId the device ID
+     * @param deviceId the device ID (which is the sensor ID as a string)
      * @param alertType the type of alert to resolve
      * @return the number of alerts resolved
      */
@@ -407,15 +416,27 @@ public class AlertService {
     public int resolveAlertsWhenValuesNormal(Sensor sensor, String deviceId, AlertType alertType) {
         try {
             // Find unresolved alerts using a functional approach
-            List<Alert> unresolvedAlerts = sensor != null
-                    ? alertRepository.findBySensorId(sensor.getId(), Pageable.unpaged())
-                            .stream()
-                            .filter(alert -> !alert.isResolved() && alert.getType() == alertType)
-                            .toList()
-                    : alertRepository.findByDeviceId(deviceId, Pageable.unpaged())
+            List<Alert> unresolvedAlerts;
+
+            if (sensor != null) {
+                unresolvedAlerts = alertRepository.findBySensorId(sensor.getId(), Pageable.unpaged())
+                        .stream()
+                        .filter(alert -> !alert.isResolved() && alert.getType() == alertType)
+                        .toList();
+            } else if (deviceId != null) {
+                try {
+                    Long sensorId = Long.parseLong(deviceId);
+                    unresolvedAlerts = alertRepository.findBySensorId(sensorId, Pageable.unpaged())
                             .stream()
                             .filter(alert -> !alert.isResolved() && alert.getType() == alertType)
                             .toList();
+                } catch (NumberFormatException e) {
+                    log.debug("DeviceId {} is not a valid sensor ID", deviceId);
+                    return 0;
+                }
+            } else {
+                return 0;
+            }
 
             if (unresolvedAlerts.isEmpty()) {
                 return 0;
@@ -436,17 +457,17 @@ public class AlertService {
             // Save all alerts in a single batch operation
             alertRepository.saveAll(resolvedAlerts);
 
-            log.info("Resolved {} alerts of type {} for {}", 
+            log.info("Resolved {} alerts of type {} for sensor {}", 
                     unresolvedAlerts.size(), 
                     alertType, 
-                    sensor != null ? "sensor " + sensor.getId() : "device " + deviceId);
+                    sensor != null ? sensor.getId() : deviceId);
 
             return unresolvedAlerts.size();
         } catch (Exception e) {
             // Log the error but don't let it propagate and disrupt telemetry processing
-            log.error("Error resolving alerts of type {} for {}: {}", 
+            log.error("Error resolving alerts of type {} for sensor {}: {}", 
                     alertType, 
-                    sensor != null ? "sensor " + sensor.getId() : "device " + deviceId,
+                    sensor != null ? sensor.getId() : deviceId,
                     e.getMessage());
             return 0;
         }

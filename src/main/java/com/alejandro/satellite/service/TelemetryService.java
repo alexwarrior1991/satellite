@@ -67,6 +67,16 @@ public class TelemetryService {
             // The mapper should handle this, but just in case
             sensorRepository.findById(telemetryPacketDTO.getSensorId()).ifPresent(telemetryPacket::setSensor);
         }
+        // If no sensor is associated but a deviceId is provided, try to find the sensor by deviceId
+        else if (telemetryPacket.getSensor() == null && telemetryPacketDTO.getDeviceId() != null) {
+            try {
+                Long sensorId = Long.parseLong(telemetryPacketDTO.getDeviceId());
+                log.debug("Looking up sensor with ID (from deviceId): {}", sensorId);
+                sensorRepository.findById(sensorId).ifPresent(telemetryPacket::setSensor);
+            } catch (NumberFormatException e) {
+                log.debug("DeviceId {} is not a valid sensor ID", telemetryPacketDTO.getDeviceId());
+            }
+        }
 
         // Save to database
         telemetryPacket = telemetryPacketRepository.save(telemetryPacket);
@@ -105,6 +115,16 @@ public class TelemetryService {
                         log.debug("Looking up sensor with ID: {}", dto.getSensorId());
                         // The mapper should handle this, but just in case
                         sensorRepository.findById(dto.getSensorId()).ifPresent(packet::setSensor);
+                    }
+                    // If no sensor is associated but a deviceId is provided, try to find the sensor by deviceId
+                    else if (packet.getSensor() == null && dto.getDeviceId() != null) {
+                        try {
+                            Long sensorId = Long.parseLong(dto.getDeviceId());
+                            log.debug("Looking up sensor with ID (from deviceId): {}", sensorId);
+                            sensorRepository.findById(sensorId).ifPresent(packet::setSensor);
+                        } catch (NumberFormatException e) {
+                            log.debug("DeviceId {} is not a valid sensor ID", dto.getDeviceId());
+                        }
                     }
 
                     return packet;
@@ -155,22 +175,58 @@ public class TelemetryService {
     }
 
     /**
-     * Get telemetry packets for a specific device.
+     * Get telemetry packets for a specific sensor.
      *
-     * @param deviceId the device ID
+     * @param sensorId the sensor ID
+     * @param pageable pagination information
+     * @return a page of telemetry packets
+     */
+    @Transactional(readOnly = true)
+    public Page<TelemetryPacketDTO> getTelemetryPacketsForSensor(Long sensorId, Pageable pageable) {
+        return telemetryPacketRepository.findBySensor_Id(sensorId, pageable)
+                .map(telemetryPacketMapper::toDto);
+    }
+
+    /**
+     * Get telemetry packets for a specific device.
+     * This method is provided for backward compatibility.
+     *
+     * @param deviceId the device ID (which is the sensor ID as a string)
      * @param pageable pagination information
      * @return a page of telemetry packets
      */
     @Transactional(readOnly = true)
     public Page<TelemetryPacketDTO> getTelemetryPacketsForDevice(String deviceId, Pageable pageable) {
-        return telemetryPacketRepository.findByDeviceId(deviceId, pageable)
+        try {
+            Long sensorId = Long.parseLong(deviceId);
+            return getTelemetryPacketsForSensor(sensorId, pageable);
+        } catch (NumberFormatException e) {
+            log.debug("DeviceId {} is not a valid sensor ID", deviceId);
+            return Page.empty(pageable);
+        }
+    }
+
+    /**
+     * Get telemetry packets for a specific sensor within a time range.
+     *
+     * @param sensorId the sensor ID
+     * @param startTime the start time
+     * @param endTime the end time
+     * @param pageable pagination information
+     * @return a page of telemetry packets
+     */
+    @Transactional(readOnly = true)
+    public Page<TelemetryPacketDTO> getTelemetryPacketsForSensorInTimeRange(
+            Long sensorId, Instant startTime, Instant endTime, Pageable pageable) {
+        return telemetryPacketRepository.findBySensor_IdAndTimestampBetween(sensorId, startTime, endTime, pageable)
                 .map(telemetryPacketMapper::toDto);
     }
 
     /**
      * Get telemetry packets for a specific device within a time range.
+     * This method is provided for backward compatibility.
      *
-     * @param deviceId the device ID
+     * @param deviceId the device ID (which is the sensor ID as a string)
      * @param startTime the start time
      * @param endTime the end time
      * @param pageable pagination information
@@ -179,8 +235,13 @@ public class TelemetryService {
     @Transactional(readOnly = true)
     public Page<TelemetryPacketDTO> getTelemetryPacketsForDeviceInTimeRange(
             String deviceId, Instant startTime, Instant endTime, Pageable pageable) {
-        return telemetryPacketRepository.findByDeviceIdAndTimestampBetween(deviceId, startTime, endTime, pageable)
-                .map(telemetryPacketMapper::toDto);
+        try {
+            Long sensorId = Long.parseLong(deviceId);
+            return getTelemetryPacketsForSensorInTimeRange(sensorId, startTime, endTime, pageable);
+        } catch (NumberFormatException e) {
+            log.debug("DeviceId {} is not a valid sensor ID", deviceId);
+            return Page.empty(pageable);
+        }
     }
 
     /**

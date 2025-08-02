@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Service for evaluating and managing alerts based on telemetry data.
@@ -83,6 +84,9 @@ public class AlertService {
         if (telemetryPacket.getTemperature() != null) {
             if (telemetryPacket.getTemperature() < minTemperature || telemetryPacket.getTemperature() > maxTemperature) {
                 alertTriggered = processTemperatureAlert(telemetryPacket);
+            } else {
+                // Temperature is normal, resolve any existing temperature alerts
+                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getDeviceId(), AlertType.TEMPERATURE);
             }
         }
 
@@ -90,6 +94,9 @@ public class AlertService {
         if (telemetryPacket.getBatteryLevel() != null) {
             if (telemetryPacket.getBatteryLevel() < criticalBatteryLevel) {
                 alertTriggered = processBatteryAlert(telemetryPacket) || alertTriggered;
+            } else {
+                // Battery level is normal, resolve any existing battery alerts
+                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getDeviceId(), AlertType.BATTERY);
             }
         }
 
@@ -97,6 +104,9 @@ public class AlertService {
         if (telemetryPacket.getSignalStrength() != null) {
             if (telemetryPacket.getSignalStrength() < minSignalStrength) {
                 alertTriggered = processSignalAlert(telemetryPacket) || alertTriggered;
+            } else {
+                // Signal strength is normal, resolve any existing signal alerts
+                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getDeviceId(), AlertType.SIGNAL);
             }
         }
 
@@ -104,6 +114,9 @@ public class AlertService {
         if (telemetryPacket.getStatus() == DeviceStatus.ERROR || 
             telemetryPacket.getStatus() == DeviceStatus.OFFLINE) {
             alertTriggered = processStatusAlert(telemetryPacket) || alertTriggered;
+        } else if (telemetryPacket.getStatus() != null) {
+            // Device status is normal, resolve any existing status alerts
+            resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getDeviceId(), AlertType.STATUS);
         }
 
         return alertTriggered;
@@ -381,6 +394,65 @@ public class AlertService {
     }
 
     /**
+     * Resolve alerts for a sensor when values return to normal.
+     * This method uses a functional approach to find and resolve alerts.
+     * It is designed to be thread-safe in a multi-threaded environment.
+     *
+     * @param sensor the sensor (can be null if only deviceId is available)
+     * @param deviceId the device ID
+     * @param alertType the type of alert to resolve
+     * @return the number of alerts resolved
+     */
+    @Transactional
+    public int resolveAlertsWhenValuesNormal(Sensor sensor, String deviceId, AlertType alertType) {
+        try {
+            // Find unresolved alerts using a functional approach
+            List<Alert> unresolvedAlerts = sensor != null
+                    ? alertRepository.findBySensorId(sensor.getId(), Pageable.unpaged())
+                            .stream()
+                            .filter(alert -> !alert.isResolved() && alert.getType() == alertType)
+                            .toList()
+                    : alertRepository.findByDeviceId(deviceId, Pageable.unpaged())
+                            .stream()
+                            .filter(alert -> !alert.isResolved() && alert.getType() == alertType)
+                            .toList();
+
+            if (unresolvedAlerts.isEmpty()) {
+                return 0;
+            }
+
+            // Resolve all found alerts in a thread-safe manner
+            Instant now = Instant.now();
+
+            // Use a more efficient batch update approach
+            List<Alert> resolvedAlerts = unresolvedAlerts.stream()
+                    .map(alert -> {
+                        alert.setResolved(true);
+                        alert.setResolvedAt(now);
+                        return alert;
+                    })
+                    .toList();
+
+            // Save all alerts in a single batch operation
+            alertRepository.saveAll(resolvedAlerts);
+
+            log.info("Resolved {} alerts of type {} for {}", 
+                    unresolvedAlerts.size(), 
+                    alertType, 
+                    sensor != null ? "sensor " + sensor.getId() : "device " + deviceId);
+
+            return unresolvedAlerts.size();
+        } catch (Exception e) {
+            // Log the error but don't let it propagate and disrupt telemetry processing
+            log.error("Error resolving alerts of type {} for {}: {}", 
+                    alertType, 
+                    sensor != null ? "sensor " + sensor.getId() : "device " + deviceId,
+                    e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Determine if an alert should be suppressed based on frequency and time.
      */
     private boolean shouldSuppressAlert(AlertTracker tracker) {
@@ -407,19 +479,19 @@ public class AlertService {
      * Helper class to track alert occurrences.
      */
     private static class AlertTracker {
-        private int count = 0;
+        private final AtomicInteger count = new AtomicInteger(0);
         private Instant lastAlertTime;
 
         public void incrementCount() {
-            count++;
+            count.incrementAndGet();
         }
 
         public void resetCount() {
-            count = 0;
+            count.set(0);
         }
 
         public int getCount() {
-            return count;
+            return count.get();
         }
 
         public Instant getLastAlertTime() {

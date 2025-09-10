@@ -18,7 +18,6 @@ public interface AlertMapper {
      * @return the DTO
      */
     @Mapping(target = "telemetryPacketId", source = "telemetryPacket.id")
-    @Mapping(target = "deviceId", source = "telemetryPacket.deviceId")
     @Mapping(target = "sensorId", source = "telemetryPacket.sensor.id")
     @Mapping(target = "sensorName", source = "telemetryPacket.sensor.name")
     AlertDTO toDto(Alert alert);

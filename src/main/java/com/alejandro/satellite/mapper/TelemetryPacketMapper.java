@@ -62,31 +62,4 @@ public abstract class TelemetryPacketMapper {
         return sensorRepository.findById(id).orElse(null);
     }
 
-    /**
-     * After mapping from entity to DTO, ensure deviceId is set based on sensor ID if needed
-     * @param source the source entity
-     * @param target the target DTO
-     */
-    public void afterMappingToDto(TelemetryPacket source, TelemetryPacketDTO target) {
-        if (target.getDeviceId() == null && source.getSensor() != null) {
-            target.setDeviceId(source.getSensor().getId().toString());
-        }
-    }
-
-    /**
-     * After mapping from DTO to entity, ensure sensor is set based on deviceId if needed
-     * @param source the source DTO
-     * @param target the target entity
-     */
-    public void afterMappingToEntity(TelemetryPacketDTO source, TelemetryPacket target) {
-        if (target.getSensor() == null && source.getDeviceId() != null) {
-            try {
-                Long sensorId = Long.parseLong(source.getDeviceId());
-                Sensor sensor = sensorRepository.findById(sensorId).orElse(null);
-                target.setSensor(sensor);
-            } catch (NumberFormatException e) {
-                // If deviceId is not a valid Long, we can't use it as a sensorId
-            }
-        }
-    }
 }

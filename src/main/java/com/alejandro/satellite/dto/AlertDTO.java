@@ -40,8 +40,6 @@ public class AlertDTO {
     private Long telemetryPacketId;
     
     // Include basic information about the related telemetry packet
-    private String deviceId;
-    
     private Long sensorId;
     
     private String sensorName;

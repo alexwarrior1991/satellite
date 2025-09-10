@@ -67,23 +67,6 @@ public class TelemetryPacket {
     @JoinColumn(name = "sensor_id")
     private Sensor sensor;
 
-    /**
-     * Get the device ID, which is the same as the sensor ID.
-     * This method is provided for backward compatibility.
-     * @return the sensor ID as a string
-     */
-    public String getDeviceId() {
-        return sensor != null ? sensor.getId().toString() : null;
-    }
-
-    /**
-     * Set the device ID, which is not used anymore.
-     * This method is provided for backward compatibility.
-     * @param deviceId the device ID as a string
-     */
-    public void setDeviceId(String deviceId) {
-        // This method is intentionally empty as deviceId is no longer stored
-    }
 
     @OneToMany(mappedBy = "telemetryPacket", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Alert> alerts = new ArrayList<>();

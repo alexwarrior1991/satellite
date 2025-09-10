@@ -69,7 +69,6 @@ class AlertServiceTest {
 
         // Normal telemetry packet
         normalPacket = new TelemetryPacket();
-        normalPacket.setDeviceId("device1");
         normalPacket.setSensor(sensor);
         normalPacket.setTemperature(25.0);
         normalPacket.setBatteryLevel(80.0);
@@ -79,7 +78,6 @@ class AlertServiceTest {
 
         // High temperature packet
         highTemperaturePacket = new TelemetryPacket();
-        highTemperaturePacket.setDeviceId("device1");
         highTemperaturePacket.setSensor(sensor);
         highTemperaturePacket.setTemperature(150.0);
         highTemperaturePacket.setBatteryLevel(80.0);
@@ -89,7 +87,6 @@ class AlertServiceTest {
 
         // Low battery packet
         lowBatteryPacket = new TelemetryPacket();
-        lowBatteryPacket.setDeviceId("device1");
         lowBatteryPacket.setSensor(sensor);
         lowBatteryPacket.setTemperature(25.0);
         lowBatteryPacket.setBatteryLevel(5.0);
@@ -99,7 +96,6 @@ class AlertServiceTest {
 
         // Low signal packet
         lowSignalPacket = new TelemetryPacket();
-        lowSignalPacket.setDeviceId("device1");
         lowSignalPacket.setSensor(sensor);
         lowSignalPacket.setTemperature(25.0);
         lowSignalPacket.setBatteryLevel(80.0);
@@ -109,7 +105,6 @@ class AlertServiceTest {
 
         // Error status packet
         errorStatusPacket = new TelemetryPacket();
-        errorStatusPacket.setDeviceId("device1");
         errorStatusPacket.setSensor(sensor);
         errorStatusPacket.setTemperature(25.0);
         errorStatusPacket.setBatteryLevel(80.0);

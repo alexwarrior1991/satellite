@@ -53,29 +53,6 @@ public class TelemetryPacketDTO {
 
     private SensorDTO sensor;
 
-    /**
-     * Get the device ID, which is the same as the sensor ID.
-     * This method is provided for backward compatibility.
-     * @return the sensor ID as a string
-     */
-    public String getDeviceId() {
-        return sensorId != null ? sensorId.toString() : null;
-    }
-
-    /**
-     * Set the device ID, which sets the sensor ID.
-     * This method is provided for backward compatibility.
-     * @param deviceId the device ID as a string
-     */
-    public void setDeviceId(String deviceId) {
-        if (deviceId != null) {
-            try {
-                this.sensorId = Long.parseLong(deviceId);
-            } catch (NumberFormatException e) {
-                // If deviceId is not a valid Long, we can't use it as sensorId
-            }
-        }
-    }
 
     // Alerts
     private List<AlertDTO> alerts = new ArrayList<>();

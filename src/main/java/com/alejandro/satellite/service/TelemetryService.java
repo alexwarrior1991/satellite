@@ -67,16 +67,6 @@ public class TelemetryService {
             // The mapper should handle this, but just in case
             sensorRepository.findById(telemetryPacketDTO.getSensorId()).ifPresent(telemetryPacket::setSensor);
         }
-        // If no sensor is associated but a deviceId is provided, try to find the sensor by deviceId
-        else if (telemetryPacket.getSensor() == null && telemetryPacketDTO.getDeviceId() != null) {
-            try {
-                Long sensorId = Long.parseLong(telemetryPacketDTO.getDeviceId());
-                log.debug("Looking up sensor with ID (from deviceId): {}", sensorId);
-                sensorRepository.findById(sensorId).ifPresent(telemetryPacket::setSensor);
-            } catch (NumberFormatException e) {
-                log.debug("DeviceId {} is not a valid sensor ID", telemetryPacketDTO.getDeviceId());
-            }
-        }
 
         // Save to database
         telemetryPacket = telemetryPacketRepository.save(telemetryPacket);
@@ -115,16 +105,6 @@ public class TelemetryService {
                         log.debug("Looking up sensor with ID: {}", dto.getSensorId());
                         // The mapper should handle this, but just in case
                         sensorRepository.findById(dto.getSensorId()).ifPresent(packet::setSensor);
-                    }
-                    // If no sensor is associated but a deviceId is provided, try to find the sensor by deviceId
-                    else if (packet.getSensor() == null && dto.getDeviceId() != null) {
-                        try {
-                            Long sensorId = Long.parseLong(dto.getDeviceId());
-                            log.debug("Looking up sensor with ID (from deviceId): {}", sensorId);
-                            sensorRepository.findById(sensorId).ifPresent(packet::setSensor);
-                        } catch (NumberFormatException e) {
-                            log.debug("DeviceId {} is not a valid sensor ID", dto.getDeviceId());
-                        }
                     }
 
                     return packet;

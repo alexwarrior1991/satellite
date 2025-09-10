@@ -86,7 +86,7 @@ public class AlertService {
                 alertTriggered = processTemperatureAlert(telemetryPacket);
             } else {
                 // Temperature is normal, resolve any existing temperature alerts
-                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getDeviceId(), AlertType.TEMPERATURE);
+                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getSensor() != null ? telemetryPacket.getSensor().getId().toString() : null, AlertType.TEMPERATURE);
             }
         }
 
@@ -96,7 +96,7 @@ public class AlertService {
                 alertTriggered = processBatteryAlert(telemetryPacket) || alertTriggered;
             } else {
                 // Battery level is normal, resolve any existing battery alerts
-                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getDeviceId(), AlertType.BATTERY);
+                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getSensor() != null ? telemetryPacket.getSensor().getId().toString() : null, AlertType.BATTERY);
             }
         }
 
@@ -106,7 +106,7 @@ public class AlertService {
                 alertTriggered = processSignalAlert(telemetryPacket) || alertTriggered;
             } else {
                 // Signal strength is normal, resolve any existing signal alerts
-                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getDeviceId(), AlertType.SIGNAL);
+                resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getSensor() != null ? telemetryPacket.getSensor().getId().toString() : null, AlertType.SIGNAL);
             }
         }
 
@@ -116,7 +116,7 @@ public class AlertService {
             alertTriggered = processStatusAlert(telemetryPacket) || alertTriggered;
         } else if (telemetryPacket.getStatus() != null) {
             // Device status is normal, resolve any existing status alerts
-            resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getDeviceId(), AlertType.STATUS);
+            resolveAlertsWhenValuesNormal(sensor, telemetryPacket.getSensor() != null ? telemetryPacket.getSensor().getId().toString() : null, AlertType.STATUS);
         }
 
         return alertTriggered;
@@ -251,8 +251,8 @@ public class AlertService {
      * Create a signal alert.
      */
     private boolean createSignalAlert(TelemetryPacket telemetryPacket) {
-        String message = String.format("Signal alert for device %s: %.2f (below minimum %.2f)",
-                telemetryPacket.getDeviceId(), telemetryPacket.getSignalStrength(), minSignalStrength);
+        String message = String.format("Signal alert for sensor %s: %.2f (below minimum %.2f)",
+                telemetryPacket.getSensor() != null ? telemetryPacket.getSensor().getId().toString() : "unknown", telemetryPacket.getSignalStrength(), minSignalStrength);
         log.warn(message);
 
         Alert alert = Alert.builder()
@@ -295,8 +295,8 @@ public class AlertService {
      * Create a status alert.
      */
     private boolean createStatusAlert(TelemetryPacket telemetryPacket) {
-        String message = String.format("Status alert for device %s: %s",
-                telemetryPacket.getDeviceId(), telemetryPacket.getStatus());
+        String message = String.format("Status alert for sensor %s: %s",
+                telemetryPacket.getSensor() != null ? telemetryPacket.getSensor().getId().toString() : "unknown", telemetryPacket.getStatus());
         log.warn(message);
 
         Alert alert = Alert.builder()
